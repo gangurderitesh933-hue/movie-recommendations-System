@@ -34,9 +34,16 @@ This repository transforms the MovieLens 25M movie collection (62,423 titles) in
 ├── movies_preprocessed.csv      # Preprocessed dataset (62,423 rows, 30 columns)
 ├── feature_engineering.py       # Advanced feature engineering pipeline
 ├── movies_featured.csv          # Final feature-engineered dataset (45 columns)
+├── requirements.txt             # Pinned web app dependencies for deployment
+├── requirements-training.txt    # Optional plotting dependency for model evaluation
+├── .gitignore                   # Excludes Python caches and local secrets
 ├── train_model.py               # Logistic Regression training & evaluation script
 ├── roc_curve_binary.png         # Binary classification ROC-AUC curve plot
 ├── roc_curve_multiclass.png     # Multi-class One-vs-Rest ROC-AUC curves plot
+├── .streamlit/config.toml       # Enables local static assets for the 3D Discover hero
+├── static/hero.css              # Hero-only styles, responsive and motion fallbacks
+├── static/hero3d.js              # Three.js reel, ribbon, particle, and poster scene
+├── static/heroScroll.js          # GSAP/ScrollTrigger scenes and Lenis integration
 ├── app.py                       # Interactive Streamlit web application
 └── README.md                    # Project documentation
 ```
@@ -135,22 +142,27 @@ Evaluated on $N_{\text{test}} = 5,000$:
 ## 💻 Interactive Streamlit Web App
 
 The application in [`app.py`](app.py) provides a modern, dark-themed UI featuring:
-- **Personalized Recommendations**: Instant suggestions based on genre, language, mood, and minimum rating.
-- **Rule-Based & Semantic Scoring**: Transparent explanations for why each film is recommended.
-- **User Watchlist**: Session-persisted watchlist for saving films.
-- **Catalogue Explorer**: Searchable movie library with tabular export to CSV.
-- **AI Lab**: Interactive sandbox to test scoring weights and explore the movie knowledge base.
+- **No account barrier**: Open the local app directly; no demo login or sign-up is required.
+- **Cinematic responsive interface**: Dark editorial styling, a scroll-driven Three.js film-reel hero, animated ambient lighting, and genre-colour catalogue artwork.
+- **Dataset-Backed Recommendations**: Suggestions are selected from `movies_featured.csv`, using its genre, era, year, and engineered metadata.
+- **Similar-Movie Recommendations**: TF-IDF vectorization and cosine similarity rank movies by title, genre, franchise, decade, and era metadata.
+- **Genre and Era Filters**: Search and filter on fields present in the catalogue.
+- **User Watchlist**: Session-persisted watchlist keyed by the dataset's `movieId`; no account or permanent storage is used.
+- **Catalogue Explorer**: Search the full 62,423-record dataset, browse it in pages, and download filtered results.
+- **AI Lab**: Inspect and export the loaded dataset and learn how the rule-based filters and content-similarity model work.
+
+The current MovieLens-derived CSV does not contain ratings, language, director, runtime, plot descriptions, or mood. The web app does not invent or display those details, and it does not fetch data from a live movie API. Similarity is content-based; the app does not train on user ratings or use a generative AI model. Streamlit serves the Python interface; it is not required by the recommendation-data pipeline itself.
 
 ---
 
 ## ⚡ Installation & Quickstart
 
 ### 1. Prerequisites
-Ensure Python 3.10+ is installed on your system.
+Use Python 3.13 to match the pinned and tested dependencies.
 
 ### 2. Install Dependencies
 ```powershell
-pip install pandas numpy scikit-learn matplotlib streamlit
+pip install -r requirements.txt
 ```
 
 ### 3. Run Preprocessing Pipeline
@@ -167,6 +179,7 @@ python feature_engineering.py
 
 ### 5. Train Logistic Regression Model & Generate ROC Curves
 ```powershell
+pip install -r requirements-training.txt
 python train_model.py
 ```
 *Outputs: Evaluation metrics in terminal, `roc_curve_binary.png`, and `roc_curve_multiclass.png`*
@@ -175,7 +188,26 @@ python train_model.py
 ```powershell
 python -m streamlit run app.py
 ```
-Open your browser at `http://localhost:8501`. Demo credentials: `demo` / `movie123`.
+Open your browser at `http://localhost:8501`. No login is required.
+
+### Deploy for free on Streamlit Community Cloud
+
+The repository is prepared for Streamlit Community Cloud:
+
+1. Push the project to a GitHub repository and include `app.py`, `requirements.txt`, `.streamlit/config.toml`, `static/`, and `movies_featured.csv`.
+2. In Streamlit Community Cloud, create an app from that repository and select `app.py` as the entrypoint.
+3. Select Python 3.13 and deploy. Community Cloud installs the pinned app dependencies from `requirements.txt`.
+
+The 25 MB featured CSV is loaded locally by the app; it is not downloaded from an external service. The 3D hero imports Three.js, GSAP, and Lenis from esm.sh, so browser access to that CDN is required. Free Community Cloud apps may sleep when unused and have resource limits; deployment availability and cold-start time depend on the platform.
+
+### The Film Reel Journey
+
+The Discover page's hero is implemented in `static/hero3d.js` (Three.js scene), `static/heroScroll.js` (GSAP ScrollTrigger scenes and Lenis scrolling), and `static/hero.css`. It uses Streamlit's static-file serving, enabled in `.streamlit/config.toml`. Internet access is required for the browser modules hosted by esm.sh.
+
+- **Reel model**: the app attempts to load `static/assets/reel.glb` (served at `/app/static/assets/reel.glb`). If it is absent or cannot load, the six-opening metallic reel is generated in Three.js.
+- **Poster source**: the current `movies_featured.csv` has no image URLs or popularity/rating field, and the app has no movie-poster API. The hero therefore makes 12 512 × 700 title/genre poster textures from real catalogue metadata and displays them as a larger curved wall (six across on desktop, three across on mobile). If a `poster_url` or `posterUrl` column is added, the hero loads and downsizes those images, falling back to the generated artwork when an image cannot load. Supply image URLs from a source you are authorized to use; cross-origin image servers must permit canvas access.
+- **Featured catalogue selection**: recognizable titles are selected only when they exist in the local dataset; remaining slots are filled from its records. This is display content for the hero and does not change recommendation ranking.
+- **Motion and fallback**: the scroll journey pins for 190% of the scroll-container height (about 1.9 viewport lengths); the cinematic section is full-bleed at 100vw. Users with reduced-motion enabled see a static hero, and WebGL or module-loading failures also fall back to static content. The “Start Discovering” CTA jumps to the existing dataset stats. The poster details dialog shows the selected MovieLens metadata; no detail page exists elsewhere in this app.
 
 ---
 

@@ -156,15 +156,20 @@ def engineer_features(df_input: pd.DataFrame) -> pd.DataFrame:
     
     return df
 
+def build_tfidf_matrix(metadata: pd.Series, max_features: int = 15000):
+    """Vectorizes movie metadata with the shared TF-IDF configuration."""
+    from sklearn.feature_extraction.text import TfidfVectorizer
+
+    vectorizer = TfidfVectorizer(stop_words='english', max_features=max_features)
+    return vectorizer.fit_transform(metadata.fillna(''))
+
 def build_recommender(df: pd.DataFrame, max_features: int = 15000):
     """
     Builds a TF-IDF matrix and provides a recommendation function.
     """
-    from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.metrics.pairwise import linear_kernel
     
-    tfidf = TfidfVectorizer(stop_words='english', max_features=max_features)
-    tfidf_mat = tfidf.fit_transform(df['weighted_metadata_soup'].fillna(''))
+    tfidf_mat = build_tfidf_matrix(df['weighted_metadata_soup'], max_features)
     
     def recommend(query_title: str, top_n: int = 6):
         q = query_title.lower().strip()
